@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>EyeMotion - سیستم نظارتی هوشمند</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Service Worker registered'))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  }
+</script>
+  
+</head>
+<body>
+
+  <div id="appContainer">
+
+    <!-- ========================================================= -->
+    <!-- هدر با بک‌گراند تصویری (بدون متن پایین)                 -->
+    <!-- ========================================================= -->
+    <div id="headerBox">
+      <header id="appHeader">
+        <select id="global-lang-select">
+          <option value="fa">🇮🇷 فارسی</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="zh">🇨🇳 中文</option>
+        </select>
+      </header>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- نوار تب‌ها با ایموجی‌ها (Sticky)                         -->
+    <!-- ========================================================= -->
+    <nav id="tabNavigation">
+      <button class="tabBtn active" data-tab="panelMemory">
+        <span class="icon-emoji icon-pulse">📷</span>
+        <span data-i18n-key="tabMemoryLabel">EyeMotion</span>
+      </button>
+      <button class="tabBtn" data-tab="panelOnline">
+        <span class="icon-emoji icon-float">🌐</span>
+        <span data-i18n-key="tabOnlineLabel">آنلاین</span>
+      </button>
+      <button class="tabBtn" data-tab="panelSettings">
+        <span class="icon-emoji icon-spin">⚙️</span>
+        <span data-i18n-key="tabSettingsLabel">تنظیمات</span>
+      </button>
+      <button class="tabBtn" data-tab="panelBrand">
+        <span class="icon-emoji icon-float">🎨</span>
+        <span data-i18n-key="tabBrandLabel">ظاهر</span>
+      </button>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- محتوای اصلی                                              -->
+    <!-- ========================================================= -->
+    <main id="appContent">
+
+      <!-- =========================================================== -->
+      <!-- پنل ۱: EyeMotion (دوربین)                                  -->
+      <!-- =========================================================== -->
+      <section id="panelMemory" class="panel active">
+
+        <div id="topControlsRow1">
+          <div class="control-item">
+            <input type="checkbox" id="show-preview-toggle" checked />
+            <label for="show-preview-toggle" data-i18n-key="btnDisplayLabel">نمایش</label>
+          </div>
+          <div class="control-item">
+            <input type="checkbox" id="dark-mode-toggle" />
+            <label for="dark-mode-toggle" data-i18n-key="btnSaveEfficientLabel">صرفه‌جویی</label>
+          </div>
+          <div class="control-item">
+            <input type="checkbox" id="save-toggle" checked />
+            <label for="save-toggle" data-i18n-key="btnSaveLabel">ذخیره</label>
+          </div>
+        </div>
+
+        <div id="topControlsRow2">
+          <div class="control-item">
+            <span data-i18n-key="recordingLabel">ضبط:</span>
+            <select id="system-state-select">
+              <option value="disabled" data-i18n-key="opt_disabled">ضبط غیرفعال</option>
+              <option value="active" data-i18n-key="opt_active">ضبط فعال آنی</option>
+              <option value="manual" data-i18n-key="opt_manual">عکاسی دستی</option>
+              <option value="delay_10" data-i18n-key="opt_delay10">ضبط پس از ۱۰ ثانیه</option>
+              <option value="delay_60" data-i18n-key="opt_delay60">ضبط پس از یک دقیقه</option>
+              <option value="delay_180" data-i18n-key="opt_delay180">ضبط پس از سه دقیقه</option>
+              <option value="timelapse_3600" data-i18n-key="opt_timelapse_1h">ضبط دوره‌ای (هر ۱ ساعت)</option>
+              <option value="timelapse_21600" data-i18n-key="opt_timelapse_6h">ضبط دوره‌ای (هر ۶ ساعت)</option>
+              <option value="timelapse_43200" data-i18n-key="opt_timelapse_12h">ضبط دوره‌ای (هر ۱۲ ساعت)</option>
+            </select>
+          </div>
+          <div class="control-item">
+            <span data-i18n-key="cameraLabel">دوربین:</span>
+            <select id="camera-select">
+              <option value="environment" data-i18n-key="opt_cam_back">عقب</option>
+              <option value="user" data-i18n-key="opt_cam_front">جلو (سلفی)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="cameraStatusBox">
+          <span id="cameraStatusText" data-i18n-key="cameraRecordingOff">ضبط: غیرفعال</span>
+        </div>
+
+        <!-- =========================================================== -->
+        <!-- بخش جدید: نمایش زمان فعالیت                                -->
+        <!-- =========================================================== -->
+        <div id="sessionInfo" style="display:none; background:var(--bg-controls); border-radius:12px; padding:8px 14px; margin-bottom:10px; border:1px solid var(--border-light);">
+          <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); flex-wrap:wrap; gap:6px;">
+            <span><i class="fas fa-play" style="color:var(--text-accent);"></i> <span data-i18n-key="sessionStartLabel">شروع:</span> <span id="sessionStartTime" style="font-weight:600; color:var(--text-primary);">--:--:--</span></span>
+            <span><i class="fas fa-hourglass-half" style="color:var(--text-accent);"></i> <span data-i18n-key="sessionDurationLabel">مدت:</span> <span id="sessionDuration" style="font-weight:600; color:var(--text-primary); font-family:monospace;">۰۰:۰۰:۰۰</span></span>
+          </div>
+        </div>
+
+        <div id="cameraPreview">
+          <video id="webcam" autoplay playsinline muted></video>
+          <div id="placeholderView">
+            <span class="icon-emoji" style="font-size:48px;">👁️</span>
+            <p data-i18n-key="waitingFirstImage">منتظر ثبت اولین تصویر...</p>
+            <div class="scanner-line"></div>
+          </div>
+          <div id="camera-error-view">
+            <span class="icon-emoji" style="font-size:36px;">⚠️</span>
+            <p data-i18n-key="errorDisconnect">قطع اتصال دوربین!</p>
+            <button id="btnRetry" data-i18n-key="btnRetryLabel">تالش مجدد</button>
+          </div>
+        </div>
+
+        <div id="statusMessage" data-i18n-key="statusWaiting">منتظر ثبت اولین تصویر...</div>
+
+        <div class="captured-image-card">
+          <div id="canvas-placeholder" class="canvas-placeholder">
+            <span class="icon-emoji" style="font-size:32px;">📷</span>
+            <span data-i18n-key="waitingFirstImage">منتظر ثبت اولین تصویر...</span>
+          </div>
+          <canvas id="main-canvas"></canvas>
+        </div>
+
+      </section>
+
+      <!-- =========================================================== -->
+      <!-- پنل ۲: آنلاین                                              -->
+      <!-- =========================================================== -->
+      <section id="panelOnline" class="panel">
+
+        <h2 class="sectionTitle" data-i18n-key="sectionOnlineTitle">
+          <span class="icon-emoji icon-float" style="font-size:24px;">🌐</span>
+          تنظیمات ارتباطات آنلاین
+        </h2>
+
+        <!-- ===== بخش تلگرام ===== -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-float" style="font-size:26px;">✈️</span>
+              <span data-i18n-key="telegram_settings_title">تنظیمات ربات تلگرام</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <label data-i18n-key="label_telegram_enable">فعال‌سازی ارسال به تلگرام</label>
+              <input type="checkbox" id="telegram-toggle" />
+            </div>
+            <div class="inputGroup">
+              <label>Bot Token:</label>
+              <input type="text" id="telegram-bot-token" placeholder="123456789:ABCdefGHI..." />
+            </div>
+            <div class="inputGroup">
+              <label>Chat ID:</label>
+              <input type="text" id="telegram-chat-id" placeholder="987654321" />
+            </div>
+            <button class="btn-action" id="save-telegram-settings" data-i18n-key="btn_save_telegram">
+              <span class="icon-emoji">💾</span>
+              ذخیره تنظیمات تلگرام
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== بخش ایمیل ===== -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-pulse" style="font-size:26px;">✉️</span>
+              <span data-i18n-key="email_settings_title">تنظیمات ایمیل (EmailJS)</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <label data-i18n-key="switchEmailLabel">فعال‌سازی ارسال ایمیل</label>
+              <input type="checkbox" id="email-toggle" />
+            </div>
+            <div class="inputGroup">
+              <label>Service ID:</label>
+              <input type="text" id="email-service-id" placeholder="service_xxxxxx" />
+            </div>
+            <div class="inputGroup">
+              <label>Template ID:</label>
+              <input type="text" id="email-template-id" placeholder="template_xxxxxx" />
+            </div>
+            <div class="inputGroup">
+              <label>Public Key:</label>
+              <input type="text" id="email-public-key" placeholder="public_key_xxxxxx" />
+            </div>
+            <button class="btn-action" id="save-email-settings" data-i18n-key="btnSaveEmailSettingsLabel">
+              <span class="icon-emoji">💾</span>
+              ذخیره تنظیمات ایمیل
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== بخش ایتا ===== -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-float" style="font-size:26px;">💬</span>
+              <span data-i18n-key="eitaa_settings_title">تنظیمات ربات ایتا</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <label data-i18n-key="label_eitaa_enable">فعال‌سازی ارسال به ایتا</label>
+              <input type="checkbox" id="eitaa-toggle" />
+            </div>
+            <div class="inputGroup">
+              <label>Bot Token (ایتایار):</label>
+              <input type="text" id="eitaa-bot-token" placeholder="توکن_ربات_ایتا" />
+            </div>
+            <div class="inputGroup">
+              <label>Chat ID:</label>
+              <input type="text" id="eitaa-chat-id" placeholder="شناسه_گروه_یا_کانال" />
+            </div>
+            <button class="btn-action" id="save-eitaa-settings" data-i18n-key="btn_save_eitaa">
+              <span class="icon-emoji">💾</span>
+              ذخیره تنظیمات ایتا
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== بخش سوابق ===== -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-spin" style="font-size:26px;">🕐</span>
+              <span data-i18n-key="log_title">سوابق ارسال عکس آنلاین</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="log-table-wrapper">
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th data-i18n-key="colDate"><span class="icon-emoji">📅</span> تاریخ</th>
+                    <th data-i18n-key="colWeekday"><span class="icon-emoji">✅</span> روز هفته</th>
+                    <th data-i18n-key="colTime"><span class="icon-emoji">🕐</span> ساعت</th>
+                    <th data-i18n-key="colService"><span class="icon-emoji">🖥️</span> سامانه کاربر</th>
+                    <th data-i18n-key="colStatus"><span class="icon-emoji">✔️</span> وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody id="online-logs-body">
+                  <tr><td colspan="5" data-i18n-key="msgNoReport">هنوز گزارش ثبت نشده است</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- =========================================================== -->
+      <!-- پنل ۳: تنظیمات                                            -->
+      <!-- =========================================================== -->
+      <section id="panelSettings" class="panel">
+
+        <h2 class="sectionTitle" data-i18n-key="sectionHardwareTitle">
+          <span class="icon-emoji" style="font-size:24px;">🔧</span>
+          تنظیمات سخت‌افزاری و پردازش
+        </h2>
+
+        <!-- رزولوشن (پیش‌فرض SD) -->
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🖼️</span>
+            <label data-i18n-key="selectResolutionLabel">رزولوشن عکس ذخیره شده</label>
+          </div>
+          <select id="resolution-select">
+            <option value="320x240" data-i18n-key="res_320x240">320x240</option>
+            <option value="480x360" data-i18n-key="res_480x360">480x360</option>
+            <option value="640x480" selected data-i18n-key="resSD">SD (640x480)</option>
+            <option value="1280x720" data-i18n-key="resHD">HD (1280x720)</option>
+            <option value="1920x1080" data-i18n-key="resFullHD">Full HD</option>
+            <option value="2560x1440" data-i18n-key="res_2K">2K (2560x1440)</option>
+            <option value="3840x2160" data-i18n-key="res_4K">4K (3840x2160)</option>
+          </select>
+        </div>
+
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🔽</span>
+            <label data-i18n-key="selectJpgQualityLabel">کیفیت فشرده‌سازی JPG</label>
+          </div>
+          <select id="quality-select">
+            <option value="0.3" data-i18n-key="jpgLow">کم (0.3)</option>
+            <option value="0.6" data-i18n-key="jpgMid">متوسط (0.6)</option>
+            <option value="0.9" selected data-i18n-key="jpgHigh">عالی (0.9)</option>
+          </select>
+        </div>
+
+        <!-- حساسیت حرکت (پیش‌فرض متوسط) -->
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">📈</span>
+            <label data-i18n-key="selectMotionSensitivityLabel">حساسیت تشخیص حرکت</label>
+          </div>
+          <select id="sensitivity-select">
+            <option value="0.08" data-i18n-key="sensLow">کم (حساسیت پایین)</option>
+            <option value="0.04" selected data-i18n-key="sensMid">متوسط</option>
+            <option value="0.015" data-i18n-key="sensHigh">زیاد</option>
+          </select>
+        </div>
+
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">⏱️</span>
+            <label data-i18n-key="selectCooldownLabel">فاصله زمانی (CoolDown)</label>
+          </div>
+          <select id="cooldown-select">
+            <option value="1000" data-i18n-key="cd1s">۱ ثانیه</option>
+            <option value="5000" data-i18n-key="cd5s">۵ ثانیه</option>
+            <option value="10000" selected data-i18n-key="cd10s">۱۰ ثانیه (پیشنهادی)</option>
+          </select>
+        </div>
+
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🚀</span>
+            <label data-i18n-key="selectAnalysisSpeedLabel">سرعت آنالیز (مصرف باتری)</label>
+          </div>
+          <select id="polling-rate-select">
+            <option value="100" data-i18n-key="speedFast">فوق‌سریع</option>
+            <option value="250" selected data-i18n-key="speedStd">استاندارد (۴ بار/ثانیه)</option>
+            <option value="500" data-i18n-key="speedEco">اقتصادی</option>
+          </select>
+        </div>
+
+        <!-- ابعاد آنالیز (پیش‌فرض استاندارد) -->
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">📐</span>
+            <label data-i18n-key="selectMotionSizeLabel">ابعاد آنالیز حرکت</label>
+          </div>
+          <select id="analysis-size-select">
+            <option value="40x30" data-i18n-key="sizeMicro">میکرو (۴۰×۳۰) حداقل</option>
+            <option value="80x60" selected data-i18n-key="sizeStd">استاندارد (۸۰×۶۰)</option>
+          </select>
+        </div>
+
+        <!-- ===== گزینه‌های صدا و فلش ===== -->
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">⚡</span>
+            <label data-i18n-key="flashToggleLabel">افکت فلش هنگام عکاسی</label>
+          </div>
+          <input type="checkbox" id="flash-toggle" />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🔊</span>
+            <label data-i18n-key="shutterSoundToggleLabel">صدای شاتر</label>
+          </div>
+          <input type="checkbox" id="shutter-sound-toggle" />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🎥</span>
+            <label data-i18n-key="label_video_rec">ضبط ۵ ثانیه ویدیو همراه با هر عکس</label>
+          </div>
+          <input type="checkbox" id="video-rec-toggle" />
+        </div>
+
+        <h2 class="sectionTitle" data-i18n-key="sectionWatermarkTitle">
+          <span class="icon-emoji" style="font-size:24px;">🔖</span>
+          تنظیمات حک مشخصات روی عکس
+        </h2>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🖊️</span>
+            <label data-i18n-key="switchWatermarkLabel">فعال‌سازی حک مشخصات (Watermark)</label>
+          </div>
+          <input type="checkbox" id="stamp-toggle" checked />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">👑</span>
+            <label data-i18n-key="switchShowLogoLabel">نمایش لوگو و نام نرم‌افزار (EyeMotion)</label>
+          </div>
+          <input type="checkbox" id="stamp-logo-toggle" checked />
+        </div>
+
+        <!-- فونت‌های سیستمی + Tahoma -->
+        <div class="settingCard">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🔤</span>
+            <label data-i18n-key="selectFontLabel">فونت نام نرم‌افزار</label>
+          </div>
+          <select id="stamp-font-select">
+            <option value="arial" data-i18n-key="fontArial">Arial</option>
+            <option value="georgia" data-i18n-key="fontGeorgia">Georgia</option>
+            <option value="times" data-i18n-key="fontTimes">Times New Roman</option>
+            <option value="verdana" data-i18n-key="fontVerdana">Verdana</option>
+            <option value="tahoma" data-i18n-key="fontTahoma">Tahoma</option>
+          </select>
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">📅</span>
+            <label data-i18n-key="switchShowDateTimeLabel">نمایش تاریخ، روز و ساعت دقیق</label>
+          </div>
+          <input type="checkbox" id="stamp-datetime-toggle" checked />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">📱</span>
+            <label data-i18n-key="switchShowBrowserOSLabel">نمایش مرورگر و سیستم‌عامل</label>
+          </div>
+          <input type="checkbox" id="stamp-device-toggle" checked />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">🔋</span>
+            <label data-i18n-key="switchShowBatteryLabel">نمایش درصد باتری دستگاه</label>
+          </div>
+          <input type="checkbox" id="stamp-battery-toggle" checked />
+        </div>
+
+        <div class="settingRow">
+          <div class="card-right">
+            <span class="icon-emoji" style="font-size:24px;">📊</span>
+            <label data-i18n-key="switchShowFileSpecsLabel">نمایش کیفیت، ابعاد و حجم فایل</label>
+          </div>
+          <input type="checkbox" id="stamp-details-toggle" checked />
+        </div>
+
+        <!-- =========================================================== -->
+        <!-- بخش جدید: مدیریت نمایش پیام‌ها                             -->
+        <!-- =========================================================== -->
+        <h2 class="sectionTitle" data-i18n-key="messageDisplayTitle">
+          <span class="icon-emoji" style="font-size:24px;">💬</span>
+          مدیریت نمایش پیام‌ها
+        </h2>
+
+        <!-- گروه ۱: پیام‌های Toast اطلاعاتی -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-float" style="font-size:20px;">ℹ️</span>
+              <span data-i18n-key="msgGroupInfoToast">پیام‌های Toast اطلاعاتی</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">📸</span>
+                <label data-i18n-key="msgPhotoCaptured">"عکس با موفقیت ثبت شد"</label>
+              </div>
+              <input type="checkbox" id="msgPhotoCaptured" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">💾</span>
+                <label data-i18n-key="msgSettingsSaved">"تنظیمات ذخیره شد"</label>
+              </div>
+              <input type="checkbox" id="msgSettingsSaved" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">✅</span>
+                <label data-i18n-key="msgSendSuccess">"ارسال موفق"</label>
+              </div>
+              <input type="checkbox" id="msgSendSuccess" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">▶️</span>
+                <label data-i18n-key="msgRecordingToggle">"ضبط فعال/غیرفعال شد"</label>
+              </div>
+              <input type="checkbox" id="msgRecordingToggle" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">✋</span>
+                <label data-i18n-key="msgManualMode">"حالت دستی"</label>
+              </div>
+              <input type="checkbox" id="msgManualMode" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏱️</span>
+                <label data-i18n-key="msgTimelapseStart">"تایم‌لپس شروع شد"</label>
+              </div>
+              <input type="checkbox" id="msgTimelapseStart" />
+            </div>
+          </div>
+        </div>
+
+        <!-- گروه ۲: پیام‌های هشدار و خطا -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-pulse" style="font-size:20px;">⚠️</span>
+              <span data-i18n-key="msgGroupError">پیام‌های هشدار و خطا</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏳</span>
+                <label data-i18n-key="msgWorkerTimeout">"Worker timeout, using fallback"</label>
+              </div>
+              <input type="checkbox" id="msgWorkerTimeout" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🚫</span>
+                <label data-i18n-key="msgCameraAccess">"خطا در دسترسی به دوربین"</label>
+              </div>
+              <input type="checkbox" id="msgCameraAccess" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">📷</span>
+                <label data-i18n-key="msgCameraDisconnect">"قطع اتصال دوربین"</label>
+              </div>
+              <input type="checkbox" id="msgCameraDisconnect" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🔧</span>
+                <label data-i18n-key="msgSettingsIncomplete">"تنظیمات ناقص است" (سرویس‌ها)</label>
+              </div>
+              <input type="checkbox" id="msgSettingsIncomplete" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">❌</span>
+                <label data-i18n-key="msgSendFailed">"ارسال ناموفق" (به سرویس‌ها)</label>
+              </div>
+              <input type="checkbox" id="msgSendFailed" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🎬</span>
+                <label data-i18n-key="msgMediaRecorder">"MediaRecorder خطا"</label>
+              </div>
+              <input type="checkbox" id="msgMediaRecorder" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🔄</span>
+                <label data-i18n-key="msgCooldownReset">"Cooldown ریست شد" (Watchdog)</label>
+              </div>
+              <input type="checkbox" id="msgCooldownReset" />
+            </div>
+          </div>
+        </div>
+
+        <!-- گروه ۳: پیام‌های وضعیت در نوار پایین (statusMessage) -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-spin" style="font-size:20px;">📋</span>
+              <span data-i18n-key="msgGroupStatusBar">پیام‌های وضعیت در نوار پایین</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏳</span>
+                <label data-i18n-key="msgStatusWaiting">"منتظر ثبت اولین تصویر..."</label>
+              </div>
+              <input type="checkbox" id="msgStatusWaiting" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🔵</span>
+                <label data-i18n-key="msgStatusActive">"برنامه فعال است. منتظر حرکت..."</label>
+              </div>
+              <input type="checkbox" id="msgStatusActive" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏹️</span>
+                <label data-i18n-key="msgStatusDisabled">"ضبط غیرفعال است"</label>
+              </div>
+              <input type="checkbox" id="msgStatusDisabled" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏳</span>
+                <label data-i18n-key="msgStatusDelay">"شروع تا X ثانیه دیگر..."</label>
+              </div>
+              <input type="checkbox" id="msgStatusDelay" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">✋</span>
+                <label data-i18n-key="msgStatusManual">"حالت عکاسی دستی"</label>
+              </div>
+              <input type="checkbox" id="msgStatusManual" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏱️</span>
+                <label data-i18n-key="msgStatusTimelapse">"ضبط دوره‌ای: هر X ثانیه"</label>
+              </div>
+              <input type="checkbox" id="msgStatusTimelapse" />
+            </div>
+          </div>
+        </div>
+
+        <!-- گروه ۴: پیام‌های وضعیت دوربین (cameraStatusText) -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-float" style="font-size:20px;">📷</span>
+              <span data-i18n-key="msgGroupCameraStatus">پیام‌های وضعیت دوربین</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">⏹️</span>
+                <label data-i18n-key="msgCameraOff">"ضبط: غیرفعال"</label>
+              </div>
+              <input type="checkbox" id="msgCameraOff" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">🔵</span>
+                <label data-i18n-key="msgCameraActive">"برنامه فعال است. منتظر حرکت..."</label>
+              </div>
+              <input type="checkbox" id="msgCameraActive" />
+            </div>
+          </div>
+        </div>
+
+        <!-- گروه ۵: پیام‌های موفقیت (Success toasts) -->
+        <div class="accordion-card open">
+          <div class="accordion-header" onclick="this.closest('.accordion-card').classList.toggle('open')">
+            <div class="card-right">
+              <span class="icon-emoji icon-pulse" style="font-size:20px;">✅</span>
+              <span data-i18n-key="msgGroupSuccess">پیام‌های موفقیت</span>
+            </div>
+            <span class="chevron-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">📸</span>
+                <label data-i18n-key="msgSuccessPhoto">"عکس با موفقیت ثبت شد!"</label>
+              </div>
+              <input type="checkbox" id="msgSuccessPhoto" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">💾</span>
+                <label data-i18n-key="msgSuccessSettings">"تنظیمات ذخیره شد"</label>
+              </div>
+              <input type="checkbox" id="msgSuccessSettings" />
+            </div>
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji" style="font-size:16px;">📤</span>
+                <label data-i18n-key="msgSuccessSend">"ارسال موفق"</label>
+              </div>
+              <input type="checkbox" id="msgSuccessSend" />
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- =========================================================== -->
+      <!-- پنل ۴: ظاهر                                              -->
+      <!-- =========================================================== -->
+      <section id="panelBrand" class="panel">
+        <div id="brandContent">
+          <span class="icon-emoji icon-pulse" style="font-size:72px;">🎨</span>
+          <h2 data-i18n-key="themeTitle">انتخاب ظاهر و تم برنامه</h2>
+          <div style="width:100%;margin-top:10px;">
+
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji icon-float" style="font-size:24px;">👑</span>
+                <label data-i18n-key="themeRoyalLabel">تم سلطنتی</label>
+              </div>
+              <input type="radio" name="appTheme" id="theme-royal" value="royal" checked />
+            </div>
+
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji icon-pulse" style="font-size:24px;">🌙</span>
+                <label data-i18n-key="themeCyberLabel">تم تاریک سایبرپانک</label>
+              </div>
+              <input type="radio" name="appTheme" id="theme-cyber" value="dark" />
+            </div>
+
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji icon-float" style="font-size:24px;">☀️</span>
+                <label data-i18n-key="themeLightLabel">تم روشن (حرفه‌ای)</label>
+              </div>
+              <input type="radio" name="appTheme" id="theme-light" value="light" />
+            </div>
+
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji icon-spin" style="font-size:24px;">✨</span>
+                <label data-i18n-key="themeGoldLabel">تم طلایی کم‌نور</label>
+              </div>
+              <input type="radio" name="appTheme" id="theme-gold" value="gold" />
+            </div>
+
+            <div class="settingRow">
+              <div class="card-right">
+                <span class="icon-emoji icon-pulse" style="font-size:24px;">💎</span>
+                <label data-i18n-key="themePremiumLabel">تم پریمیوم</label>
+              </div>
+              <input type="radio" name="appTheme" id="theme-premium" value="premium" />
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- فوتر با ایموجی‌ها (Sticky)                               -->
+    <!-- ========================================================= -->
+    <footer id="appFooter">
+      <button class="footerTab active" data-tab="panelMemory">
+        <span class="icon-emoji icon-pulse" style="font-size:28px;">📷</span>
+        <span data-i18n-key="tabMemoryLabel">EyeMotion</span>
+      </button>
+      <button class="footerTab" data-tab="panelOnline">
+        <span class="icon-emoji icon-float" style="font-size:28px;">🌐</span>
+        <span data-i18n-key="tabOnlineLabel">آنلاین</span>
+      </button>
+      <button class="footerTab" data-tab="panelSettings">
+        <span class="icon-emoji icon-spin" style="font-size:28px;">⚙️</span>
+        <span data-i18n-key="tabSettingsLabel">تنظیمات</span>
+      </button>
+      <button class="footerTab" data-tab="panelBrand">
+        <span class="icon-emoji icon-float" style="font-size:28px;">🎨</span>
+        <span data-i18n-key="tabBrandLabel">ظاهر</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- اورلی‌ها                                                 -->
+  <!-- ========================================================= -->
+  <div id="flash-overlay"></div>
+  <div id="dark-screen-overlay">
+    <span data-i18n-key="exit_dark_mode">برای خروج دو بار ضربه بزنید</span>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- اورلی تمام‌صفحه برای عکاسی دستی (با دکمه خروج)          -->
+  <!-- ========================================================= -->
+  <div id="manualCaptureOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; z-index:99998; align-items:center; justify-content:center; flex-direction:column; cursor:pointer;">
+    <video id="manualVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain;"></video>
+
+    <button id="exitManualBtn" style="
+      position:absolute;
+      top:20px;
+      right:20px;
+      background:rgba(0,0,0,0.6);
+      color:white;
+      border:1px solid rgba(255,255,255,0.3);
+      border-radius:50%;
+      width:48px;
+      height:48px;
+      font-size:24px;
+      cursor:pointer;
+      z-index:99999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      backdrop-filter:blur(8px);
+      transition: background 0.3s ease;
+    " onmouseover="this.style.background='rgba(255,0,0,0.7)'" onmouseout="this.style.background='rgba(0,0,0,0.6)'">
+      ✕
+    </button>
+
+    <div id="manualHint" style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); color:white; background:rgba(0,0,0,0.6); padding:10px 20px; border-radius:12px; font-size:14px; text-align:center; pointer-events:none; backdrop-filter:blur(4px);">
+      <span data-i18n-key="manual_hint">برای عکاسی کلیک کنید، برای خروج دوبار ضربه بزنید</span>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- سیستم Toast (پیام‌های غیرمسدودکننده)                    -->
+  <!-- ========================================================= -->
+  <div id="toastContainer" style="position:fixed; top:80px; left:50%; transform:translateX(-50%); z-index:99999; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; max-width:90%; width:400px;"></div>
+
+  <!-- ========================================================= -->
+  <!-- بارگذاری EmailJS به‌صورت شرطی                            -->
+  <!-- ========================================================= -->
+  <script async defer
+          src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"
+          onerror="console.warn('⚠️ EmailJS بارگذاری نشد. ارسال ایمیل غیرفعال است.')"
+          onload="console.log('✅ EmailJS با موفقیت بارگذاری شد.')">
+  </script>
+
+  <!-- ========================================================= -->
+  <!-- اسکریپت‌های اصلی برنامه (فقط app.js به صورت module)     -->
+  <!-- ========================================================= -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
